@@ -1,8 +1,9 @@
 # rEFInd
 A collection of scripts to simplify rebooting into a specific operating system from another booted OS instance. Particularly useful for dual-boot/multi-boot environments and remotely managed systems.
 
-Before you start:
+Before you start ⚠️:
 - Don't run any scripts without knowing what they do.
+- ⚠️⚠️⚠️If you run any ps1 script your R: partition will be unmounted (if exist)⚠️⚠️⚠️
 - Edit serial disk variable and path for $sourcefile
 - You must prepare "PreviousBoot" files by just simply boot into Every desired OS and for each boot copy PreviousBoot somewhere on rEFInd folder for ex.: PreviousBoot-linux, PreviousBoot-windows, PreviousBoot-freebsd (can be at same level of refind.conf).
 - For mounting rEFInd partiton in windows there is two options:
