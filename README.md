@@ -1,7 +1,7 @@
 # rEFInd
 A collection of scripts to simplify rebooting into a specific operating system from another booted OS instance. Particularly useful for dual-boot/multi-boot environments and remotely managed systems.
 
-Before you start ⚠️:
+⚠️ Before you start:
 - Don't run any scripts without knowing what they do.
 - ⚠️⚠️⚠️If you run any ps1 script your R: partition will be unmounted (if exist)⚠️⚠️⚠️
 - Edit serial disk variable and path for $sourcefile
