@@ -9,7 +9,7 @@ Before you start:
     Use command mountvol *DISK LETTER*: /S ex.: mountvol U: /S
     Run file in repo called mount-efi.ps1 (AGAIN: NEED TO EDIT DISK SERIAL NUMBER AND PATH IN SCRIPT TO WORK ON YOUR SYSTEM.)
     
-For easy and quick access in windows to lauching ps1 script you can make new windows shortcut with something like: powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\reboot-to-linux.ps1" -Verb RunAs
+For easy and quick access in windows to lauching ps1 script you can make new windows shortcut with "Run as Administrator" mark checked and something like: powershell.exe -ExecutionPolicy Bypass -File "%USERPROFILE%\reboot-to-linux.ps1" -Verb RunAs
 
 Requirements for *.ps1 files:
 - Powershell compatible windows (for now) if you need for older windows make new issue requesting compability.
