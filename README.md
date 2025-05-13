@@ -7,6 +7,7 @@ Requirements for *.ps1 files:
 - Administrative rights to run scripts as Admin.
 
 Requirements for *.sh file:
-- Yhm.. Just linux with bash
+- Prepared "PreviousBoot" files by just simply boot into Every desired OS and for each boot copy PreviousBoot somewhere on rEFInd folder (can be at same level of refind.conf). For mounting rEFInd partiton in windows there is file in repo called mount-efi.ps1 (NEED TO EDIT SERIAL NUMBER IN SCRIPT TO WORK ON YOUR SYSTEM.)
+- Yhm... Just linux with bash
 
-For .sh files  you can just copy 2 commands instead running script. (Compared to 56 lines of powershell for windows XD its not worth)
+For .sh files you can just copy 2 commands instead running script. (Compared to 56 lines of powershell for windows XD its not worth)
