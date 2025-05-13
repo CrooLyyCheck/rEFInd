@@ -8,4 +8,5 @@ Requirements for *.ps1 files:
 
 Requirements for *.sh file:
 - Yhm.. Just linux with bash
-- 
+
+For .sh files  you can just copy 2 commands instead running script. (Compared to 56 lines of powershell for windows XD its not worth)
