@@ -19,4 +19,4 @@ Requirements for *.ps1 files:
 Requirements for *.sh file:
 
 - Yhm... Just linux with bash and root/sudo/wheel access
-- make script executable chmod +x path_to_file.sh
+- make script executable: sudo chmod +x path_to_file.sh
