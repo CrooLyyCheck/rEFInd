@@ -1,5 +1,5 @@
 # rEFInd
-A collection of scripts to simplify rebooting into a specific operating system from another OS booted instance. Particularly useful for dual-boot/multi-boot environments and remotely managed systems.
+A collection of scripts to simplify rebooting into a specific operating system from another booted OS instance. Particularly useful for dual-boot/multi-boot environments and remotely managed systems.
 
 Before you start:
 - Don't run any scripts without knowing what they do.
