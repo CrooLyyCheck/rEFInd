@@ -122,7 +122,7 @@ if ($alreadyMounted) {
 Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
 $index = 1
 $foundPartitions | ForEach-Object {
-    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
+    Write-Host "[$index] $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
     $index++
 }
 
