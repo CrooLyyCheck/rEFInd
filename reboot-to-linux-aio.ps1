@@ -7,7 +7,7 @@ $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 
 function Show-MainMenu {
     Write-Host ""
-    Write-Host "==== rEFInd AIO ====" -ForegroundColor Cyan
+    Write-Host "==== reboot to linux AIO ====" -ForegroundColor Cyan
     Write-Host "1 - Detect and Mount rEFInd" -ForegroundColor Yellow
     Write-Host "2 - Set linux on next reboot" -ForegroundColor Yellow
     Write-Host "Q - Quit" -ForegroundColor Yellow
