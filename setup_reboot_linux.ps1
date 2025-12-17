@@ -46,8 +46,7 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
                     DiskNumber      = $disk.Number
                     PartitionNumber = $part.PartitionNumber
                     SizeGB          = [math]::Round($part.Size / 1GB, 2)
-                    DriveLetter     = $tempLetter
-                    Path            = if ($hasRefind1) { $refindPath1 } else { $refindPath2 }
+                    RefindLocation  = if ($hasRefind1) { "EFI\refind" } else { "EFI\BOOT\refind" }
                 }
             }
         } catch {
@@ -70,7 +69,7 @@ if (-not $foundPartitions) {
 Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
 $index = 1
 $foundPartitions | ForEach-Object {
-    Write-Host "[$index] Disk: $($_.DiskNumber), Partition: $($_.PartitionNumber), Size: $($_.SizeGB) GB, rEFInd path: $($_.Path)" -ForegroundColor Yellow
+    Write-Host "[$index] Disk: $($_.DiskNumber), Partition: $($_.PartitionNumber), Size: $($_.SizeGB) GB, rEFInd location: $($_.RefindLocation)" -ForegroundColor Yellow
     $index++
 }
 
@@ -80,7 +79,7 @@ if ($foundPartitions.Count -eq 1) {
     $p = $foundPartitions[0]
     Write-Host "" 
     Write-Host "Detected single rEFInd partition:" -ForegroundColor Cyan
-    Write-Host "Disk: $($p.DiskNumber), Partition: $($p.PartitionNumber), Size: $($p.SizeGB) GB, Path: $($p.Path)"
+    Write-Host "Disk: $($p.DiskNumber), Partition: $($p.PartitionNumber), Size: $($p.SizeGB) GB, Location: $($p.RefindLocation)"
 
     $answer = Read-Host "Do you want to mount this partition to drive letter ${PreferredLetter}: ? [Y/N]"
     if ($answer -match '^[Yy]') {
@@ -146,7 +145,7 @@ if ($existingPartition -or $existingVolume) {
 try {
     Add-PartitionAccessPath -DiskNumber $selected.DiskNumber -PartitionNumber $selected.PartitionNumber -AccessPath "${letter}:" -ErrorAction Stop
     Write-Host "Mounted Disk $($selected.DiskNumber), Partition $($selected.PartitionNumber) to ${letter}:" -ForegroundColor Green
-    Write-Host "rEFInd should be available under ${letter}:\EFI\refind or ${letter}:\EFI\BOOT\refind"
+    Write-Host "rEFInd is available at: ${letter}:\$($selected.RefindLocation)"
     Write-Host "To unmount: Remove-PartitionAccessPath -DiskNumber $($selected.DiskNumber) -PartitionNumber $($selected.PartitionNumber) -AccessPath ${letter}:"
 } catch {
     Write-Host "Mount error: $($_.Exception.Message)" -ForegroundColor Red
