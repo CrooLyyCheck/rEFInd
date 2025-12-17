@@ -66,7 +66,7 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
                     SizeGB          = [math]::Round($part.Size / 1GB, 2)
                     RefindLocation  = if ($hasRefind1) { "EFI\refind" } else { "EFI\BOOT\refind" }
                     CurrentLetter   = $currentLetter
-                    IsCurrentlyMounted = ($currentLetter -ne $null)
+                    IsCurrentlyMounted = ($null -ne $currentLetter)
                 }
             }
         } finally {
