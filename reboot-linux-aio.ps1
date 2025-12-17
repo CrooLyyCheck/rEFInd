@@ -5,10 +5,9 @@ param(
 # EFI System Partition (ESP) GPT type GUID
 $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 
-Write-Host "Scanning disks for EFI partitions containing rEFInd..." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "This script needs to temporarily access EFI partitions to check for rEFInd." -ForegroundColor Yellow
-Write-Host "Partitions will be mounted to temporary folders (not drive letters) for inspection." -ForegroundColor Yellow
+Write-Host "Partitions will be mounted to temporary folders (not drive letters, this would be created in %temp%\rEFInd_Scan) for inspection." -ForegroundColor Yellow
 Write-Host "Only partitions with official EFI System Partition GUID will be checked." -ForegroundColor Yellow
 Write-Host ""
 
