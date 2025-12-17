@@ -38,15 +38,16 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
             $refindPath1 = "${tempLetter}:\EFI\refind"
             $refindPath2 = "${tempLetter}:\EFI\BOOT\refind"
 
-            if (Test-Path $refindPath1 -PathType Container -ErrorAction SilentlyContinue -or
-                Test-Path $refindPath2 -PathType Container -ErrorAction SilentlyContinue) {
+            $hasRefind1 = Test-Path $refindPath1 -PathType Container -ErrorAction SilentlyContinue
+            $hasRefind2 = Test-Path $refindPath2 -PathType Container -ErrorAction SilentlyContinue
 
+            if ($hasRefind1 -or $hasRefind2) {
                 $foundPartitions += [pscustomobject]@{
                     DiskNumber      = $disk.Number
                     PartitionNumber = $part.PartitionNumber
                     SizeGB          = [math]::Round($part.Size / 1GB, 2)
                     DriveLetter     = $tempLetter
-                    Path            = if (Test-Path $refindPath1) { $refindPath1 } else { $refindPath2 }
+                    Path            = if ($hasRefind1) { $refindPath1 } else { $refindPath2 }
                 }
             }
         } catch {
