@@ -164,15 +164,14 @@ if ($existingPartition -or $existingVolume) {
         Write-Host ("Current mapping: Volume={0}, FileSystem={1}, Label={2}" -f $existingVolume.UniqueId, $existingVolume.FileSystem, $existingVolume.FileSystemLabel)
     }
 
+    Write-Host "" 
     do {
-        Write-Host "" 
-        Write-Host "Choose an option:" 
-        Write-Host "1 - Unmount ${letter}: and continue"
-        Write-Host "2 - Cancel the script"
-        $choice = (Read-Host "Your choice [1/2]").Trim()
-    } until ($choice -in @('1','2'))
+        Write-Host "Do you want to unmount ${letter}: and continue? [Y/N]" -NoNewline
+        $unmountAnswer = Read-Host " "
+        $unmountAnswer = $unmountAnswer.Trim()
+    } until ($unmountAnswer -match '^[YyNn]$')
 
-    if ($choice -eq '2') {
+    if ($unmountAnswer -match '^[Nn]$') {
         Write-Host "Cancelled by user." -ForegroundColor Cyan
         return
     }
