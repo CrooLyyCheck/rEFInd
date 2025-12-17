@@ -84,32 +84,19 @@ if (-not $foundPartitions) {
     return
 }
 
-Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
-$index = 1
-$foundPartitions | ForEach-Object {
-    $mountStatus = if ($_.IsCurrentlyMounted) { " (already mounted as $($_.CurrentLetter):)" } else { "" }
-    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)$mountStatus" -ForegroundColor Yellow
-    $index++
-}
-
 # Check if any found partition is already mounted
 $alreadyMounted = $foundPartitions | Where-Object { $_.IsCurrentlyMounted }
 if ($alreadyMounted) {
+    Write-Host "Detected disk: $($alreadyMounted[0].DiskName), Partition: $($alreadyMounted[0].PartitionNumber), already mounted as $($alreadyMounted[0].CurrentLetter):" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Warning: Detected already mounted rEFInd partition(s):" -ForegroundColor Yellow
-    $alreadyMounted | ForEach-Object {
-        Write-Host "  Disk: $($_.DiskName), Partition: $($_.PartitionNumber), Mounted as: $($_.CurrentLetter):" -ForegroundColor Yellow
-    }
 
     do {
-        Write-Host ""
-        Write-Host "Choose an option:"
-        Write-Host "1 - Unmount detected partition(s) and continue script"
-        Write-Host "2 - Cancel the script"
-        $choice = (Read-Host "Your choice [1/2]").Trim()
-    } until ($choice -in @('1','2'))
+        Write-Host "Detected rEFInd partition, do you want to unmount it and continue script? [Y/N]" -NoNewline
+        $answer = Read-Host " "
+        $answer = $answer.Trim()
+    } until ($answer -match '^[YyNn]$')
 
-    if ($choice -eq '2') {
+    if ($answer -match '^[Nn]$') {
         Write-Host "Cancelled by user." -ForegroundColor Cyan
         return
     }
@@ -129,6 +116,14 @@ if ($alreadyMounted) {
             return
         }
     }
+    Write-Host ""
+}
+
+Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
+$index = 1
+$foundPartitions | ForEach-Object {
+    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
+    $index++
 }
 
 # If exactly one, ask for confirmation first
