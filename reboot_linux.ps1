@@ -119,19 +119,14 @@ if ($refind) {
 
 Write-Host "To unmount: Remove-PartitionAccessPath -DiskNumber $($disk.Number) -PartitionNumber $($esp.PartitionNumber) -AccessPath ${letter}:"
 
-# --- Toggle default_selection in refind.conf (Microsoft -> "vmlinuz") ---
+# --- Set default_selection to vmlinuz in refind.conf ---
 
 if (-not $refind) {
     Write-Host "Cannot edit refind.conf because it was not found."
     return
 }
 
-# Exact target lines (match full line only)
-$lineKeep1  = '#default_selection 1'                # kept as-is, not modified
-$lineMsOn   = 'default_selection Microsoft'
-$lineMsOff  = '#default_selection Microsoft'
-$lineLinOn  = 'default_selection "vmlinuz"'
-$lineLinOff = '#default_selection "vmlinuz"'
+$targetValue = 'default_selection "vmlinuz"'
 
 try {
     $content = Get-Content -LiteralPath $refind -ErrorAction Stop
@@ -140,33 +135,50 @@ try {
     return
 }
 
-# Replace only the intended lines:
-# - Microsoft: uncommented -> commented
-# - vmlinuz:   commented   -> uncommented
-$updated = $content | ForEach-Object {
-    switch ($_) {
-        { $_ -eq $lineMsOn }   { $lineMsOff; continue }
-        { $_ -eq $lineLinOff } { $lineLinOn; continue }
-        default { $_ }
+# Find active (uncommented) default_selection line
+$activeLineIndex = -1
+for ($i = 0; $i -lt $content.Count; $i++) {
+    if ($content[$i] -match '^\s*default_selection\s+') {
+        $activeLineIndex = $i
+        break
     }
 }
 
-# Safety check: after edit there must be exactly one active default_selection
-$activeDefaults = $updated | Where-Object { $_ -match '^\s*default_selection\b' }
-
-if ($activeDefaults.Count -ne 1) {
-    Write-Host "Safety stop: after edit there are $($activeDefaults.Count) active default_selection lines. No changes were written."
-    return
-}
-
-if ($activeDefaults[0] -ne $lineLinOn) {
-    Write-Host 'Safety stop: the active default_selection is not "vmlinuz". No changes were written.'
-    return
+if ($activeLineIndex -ge 0) {
+    # Active default_selection exists - replace it
+    Write-Host "Found active default_selection at line $($activeLineIndex + 1): $($content[$activeLineIndex])"
+    $content[$activeLineIndex] = $targetValue
+    Write-Host "Replaced with: $targetValue"
+} else {
+    # No active default_selection - add it after the first commented one or at the end
+    Write-Host "No active default_selection found. Adding new line."
+    
+    $insertIndex = -1
+    for ($i = 0; $i -lt $content.Count; $i++) {
+        if ($content[$i] -match '^\s*#\s*default_selection\s+') {
+            $insertIndex = $i + 1
+            break
+        }
+    }
+    
+    if ($insertIndex -ge 0) {
+        # Insert after first commented default_selection
+        $newContent = @()
+        $newContent += $content[0..($insertIndex-1)]
+        $newContent += $targetValue
+        $newContent += $content[$insertIndex..($content.Count-1)]
+        $content = $newContent
+        Write-Host "Inserted '$targetValue' after commented default_selection at line $insertIndex"
+    } else {
+        # No commented default_selection found - add at the end
+        $content += $targetValue
+        Write-Host "Added '$targetValue' at the end of the file"
+    }
 }
 
 try {
-    Set-Content -LiteralPath $refind -Value $updated -Encoding UTF8 -ErrorAction Stop
-    Write-Host "Updated: $refind"
+    Set-Content -LiteralPath $refind -Value $content -Encoding UTF8 -ErrorAction Stop
+    Write-Host "Successfully updated: $refind"
 } catch {
     Write-Host "Write error: $($_.Exception.Message)"
     return
