@@ -126,12 +126,13 @@ if (-not $refind) {
     return
 }
 
-# Exact target lines (match full line only)
-$lineKeep1  = '#default_selection 1'                # kept as-is, not modified
-$lineMsOn   = 'default_selection Microsoft'
-$lineMsOff  = '#default_selection Microsoft'
-$lineLinOn  = 'default_selection "vmlinuz"'
-$lineLinOff = '#default_selection "vmlinuz"'
+# Define patterns for lines we need to toggle
+$patternMicrosoft = '^\s*#?\s*default_selection\s+Microsoft\s*$'
+$patternVmlinuz = '^\s*#?\s*default_selection\s+"vmlinuz"\s*$'
+
+# Target states after toggle
+$microsoftCommented = '#default_selection Microsoft'
+$vmlinuzUncommented = 'default_selection "vmlinuz"'
 
 try {
     $content = Get-Content -LiteralPath $refind -ErrorAction Stop
@@ -140,26 +141,30 @@ try {
     return
 }
 
-# Replace only the intended lines:
-# - Microsoft: uncommented -> commented
-# - vmlinuz:   commented   -> uncommented
+# Toggle the lines:
+# - Any Microsoft line (commented or not) -> commented
+# - Any vmlinuz line (commented or not) -> uncommented
 $updated = $content | ForEach-Object {
-    switch ($_) {
-        { $_ -eq $lineMsOn }   { $lineMsOff; continue }
-        { $_ -eq $lineLinOff } { $lineLinOn; continue }
-        default { $_ }
+    if ($_ -match $patternMicrosoft) {
+        $microsoftCommented
+    }
+    elseif ($_ -match $patternVmlinuz) {
+        $vmlinuzUncommented
+    }
+    else {
+        $_
     }
 }
 
 # Safety check: after edit there must be exactly one active default_selection
-$activeDefaults = $updated | Where-Object { $_ -match '^\s*default_selection\b' }
+$activeDefaults = $updated | Where-Object { $_ -match '^\s*default_selection\b' -and $_ -notmatch '^\s*#' }
 
 if ($activeDefaults.Count -ne 1) {
     Write-Host "Safety stop: after edit there are $($activeDefaults.Count) active default_selection lines. No changes were written."
     return
 }
 
-if ($activeDefaults[0] -ne $lineLinOn) {
+if ($activeDefaults[0].Trim() -ne $vmlinuzUncommented) {
     Write-Host 'Safety stop: the active default_selection is not "vmlinuz". No changes were written.'
     return
 }
