@@ -132,7 +132,7 @@ if ($foundPartitions.Count -eq 1) {
     $p = $foundPartitions[0]
     Write-Host "" 
 
-    $answer = Read-Host "Detected single rEFInd partition on disk '$($p.DiskName)', partition $($p.PartitionNumber), size $($p.SizeGB) GB, location $($p.RefindLocation). Do you want to mount this partition to drive letter ${PreferredLetter}: ? [Y/N]"
+    $answer = Read-Host "Do you want to mount this partition to drive letter ${PreferredLetter}: ? [Y/N]"
     if ($answer -match '^[Yy]') {
         $selected = $p
     } else {
