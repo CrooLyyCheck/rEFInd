@@ -8,13 +8,13 @@ $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 function Show-MainMenu {
     Write-Host ""
     Write-Host "==== rEFInd AIO ====" -ForegroundColor Cyan
-    Write-Host "1 - Mount EFI and detect rEFInd" -ForegroundColor Yellow
-    Write-Host "2 - Reboot to Linux (set default_selection to vmlinuz)" -ForegroundColor Yellow
+    Write-Host "1 - Detect and Mount rEFInd" -ForegroundColor Yellow
+    Write-Host "2 - Set linux on next reboot" -ForegroundColor Yellow
     Write-Host "Q - Quit" -ForegroundColor Yellow
     Write-Host ""
 }
 
-function Mount-RefindEfi {
+function Mount-Refind {
     Write-Host ""
     Write-Host "This script needs to temporarily access EFI partitions to check for rEFInd." -ForegroundColor Yellow
     Write-Host "Partitions will be mounted to temporary folders (not drive letters, this would be created in %temp%\rEFInd_Scan) for inspection." -ForegroundColor Yellow
@@ -365,7 +365,7 @@ while (-not $exitRequested) {
 
     switch ($choice) {
         '1' {
-            Mount-RefindEfi
+            Mount-Refind
         }
         '2' {
             # Option 2 assumes EFI is already mounted to PreferredLetter
