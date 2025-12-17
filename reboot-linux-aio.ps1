@@ -6,6 +6,21 @@ param(
 $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 
 Write-Host "Scanning disks for EFI partitions containing rEFInd..." -ForegroundColor Cyan
+Write-Host "Note: To inspect partitions for rEFInd folders, temporary mounting may be required." -ForegroundColor Yellow
+Write-Host ""
+
+do {
+    Write-Host "Do you want to proceed with scanning (temporary mounts will be created and removed automatically)? [Y/N]" -NoNewline
+    $scanConsent = Read-Host " "
+    $scanConsent = $scanConsent.Trim()
+} until ($scanConsent -match '^[YyNn]$')
+
+if ($scanConsent -match '^[Nn]$') {
+    Write-Host "Scanning cancelled by user." -ForegroundColor Cyan
+    return
+}
+
+Write-Host ""
 
 $foundPartitions = @()
 
