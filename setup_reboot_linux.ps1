@@ -16,7 +16,7 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
 
     foreach ($part in $partitions) {
         # Heuristic: EFI/system-like partition
-        $isEsp = ($part.GptType -eq $espGuid) -or ($part.IsSystem -eq $true) -or ($part.Type -match 'System') -or ($part.Size -lt 2GB)
+        $isEsp = ($part.GptType -eq $espGuid) -or ($part.IsSystem -eq $true) -or ($part.Type -match 'System')
         if (-not $isEsp) { continue }
 
         # Check if partition is already mounted
@@ -91,7 +91,7 @@ if ($alreadyMounted) {
     Write-Host ""
 
     do {
-        Write-Host "Do you want to unmount it and continue script? [Y/N]" -NoNewline
+        Write-Host "Detected rEFInd partition, do you want to unmount it and continue script? [Y/N]" -NoNewline
         $answer = Read-Host " "
         $answer = $answer.Trim()
     } until ($answer -match '^[YyNn]$')
@@ -122,7 +122,7 @@ if ($alreadyMounted) {
 Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
 $index = 1
 $foundPartitions | ForEach-Object {
-    Write-Host "[$index] $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
+    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
     $index++
 }
 
