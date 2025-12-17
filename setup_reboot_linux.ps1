@@ -19,22 +19,39 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
         $isEsp = ($part.GptType -eq $espGuid) -or ($part.IsSystem -eq $true) -or ($part.Type -match 'System') -or ($part.Size -lt 2GB)
         if (-not $isEsp) { continue }
 
-        # Temporarily mount to a free letter to inspect
+        # Check if partition is already mounted
+        $currentLetter = $null
+        if ($part.DriveLetter) {
+            $currentLetter = $part.DriveLetter
+        }
+
+        # Temporarily mount to a free letter to inspect (only if not already mounted)
         $tempLetter = $null
-        for ($c = 90; $c -ge 68; $c--) { # Z..D
-            $candidate = [char]$c
-            if (-not (Get-Volume -DriveLetter $candidate -ErrorAction SilentlyContinue)) {
-                $tempLetter = $candidate
-                break
+        $needsUnmount = $false
+
+        if ($currentLetter) {
+            # Already mounted, use existing letter
+            $tempLetter = $currentLetter
+        } else {
+            # Find free letter for temporary mount
+            for ($c = 90; $c -ge 68; $c--) { # Z..D
+                $candidate = [char]$c
+                if (-not (Get-Volume -DriveLetter $candidate -ErrorAction SilentlyContinue)) {
+                    $tempLetter = $candidate
+                    break
+                }
+            }
+            if (-not $tempLetter) { continue }
+
+            try {
+                Add-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath "${tempLetter}:" -ErrorAction Stop
+                $needsUnmount = $true
+            } catch {
+                continue
             }
         }
-        if (-not $tempLetter) { continue }
 
-        $mountedHere = $false
         try {
-            Add-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath "${tempLetter}:" -ErrorAction Stop
-            $mountedHere = $true
-
             $refindPath1 = "${tempLetter}:\EFI\refind"
             $refindPath2 = "${tempLetter}:\EFI\BOOT\refind"
 
@@ -48,12 +65,12 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
                     PartitionNumber = $part.PartitionNumber
                     SizeGB          = [math]::Round($part.Size / 1GB, 2)
                     RefindLocation  = if ($hasRefind1) { "EFI\refind" } else { "EFI\BOOT\refind" }
+                    CurrentLetter   = $currentLetter
+                    IsCurrentlyMounted = ($currentLetter -ne $null)
                 }
             }
-        } catch {
-            # Ignore and continue scanning
         } finally {
-            if ($mountedHere) {
+            if ($needsUnmount) {
                 try {
                     Remove-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath "${tempLetter}:" -ErrorAction SilentlyContinue
                 } catch {}
@@ -70,8 +87,48 @@ if (-not $foundPartitions) {
 Write-Host "Found the following EFI partitions with rEFInd:" -ForegroundColor Green
 $index = 1
 $foundPartitions | ForEach-Object {
-    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)" -ForegroundColor Yellow
+    $mountStatus = if ($_.IsCurrentlyMounted) { " (already mounted as $($_.CurrentLetter):)" } else { "" }
+    Write-Host "[$index] Detected disk: $($_.DiskName), location: $($_.RefindLocation)$mountStatus" -ForegroundColor Yellow
     $index++
+}
+
+# Check if any found partition is already mounted
+$alreadyMounted = $foundPartitions | Where-Object { $_.IsCurrentlyMounted }
+if ($alreadyMounted) {
+    Write-Host ""
+    Write-Host "Warning: Detected already mounted rEFInd partition(s):" -ForegroundColor Yellow
+    $alreadyMounted | ForEach-Object {
+        Write-Host "  Disk: $($_.DiskName), Partition: $($_.PartitionNumber), Mounted as: $($_.CurrentLetter):" -ForegroundColor Yellow
+    }
+
+    do {
+        Write-Host ""
+        Write-Host "Choose an option:"
+        Write-Host "1 - Unmount detected partition(s) and continue script"
+        Write-Host "2 - Cancel the script"
+        $choice = (Read-Host "Your choice [1/2]").Trim()
+    } until ($choice -in @('1','2'))
+
+    if ($choice -eq '2') {
+        Write-Host "Cancelled by user." -ForegroundColor Cyan
+        return
+    }
+
+    # Unmount all already mounted rEFInd partitions
+    foreach ($mounted in $alreadyMounted) {
+        try {
+            Remove-PartitionAccessPath -DiskNumber $mounted.DiskNumber `
+                                      -PartitionNumber $mounted.PartitionNumber `
+                                      -AccessPath "$($mounted.CurrentLetter):" -ErrorAction Stop
+            Write-Host "Unmounted Disk $($mounted.DiskNumber), Partition $($mounted.PartitionNumber) from $($mounted.CurrentLetter):" -ForegroundColor Green
+            # Update the object to reflect unmounted state
+            $mounted.IsCurrentlyMounted = $false
+            $mounted.CurrentLetter = $null
+        } catch {
+            Write-Host "Failed to unmount $($mounted.CurrentLetter):: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
+    }
 }
 
 # If exactly one, ask for confirmation first
