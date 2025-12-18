@@ -7,20 +7,18 @@ $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 
 Write-Host "Scanning disks for EFI partitions containing rEFInd..." -ForegroundColor Cyan
 Write-Host ""
-Write-Host "WARNING: This script needs to mount and unmount EFI partitions to check for rEFInd." -ForegroundColor Yellow
-Write-Host "Each potential EFI partition will be:" -ForegroundColor Yellow
-Write-Host "  1. Temporarily MOUNTED to inspect its contents" -ForegroundColor Yellow
-Write-Host "  2. Automatically UNMOUNTED after inspection" -ForegroundColor Yellow
+Write-Host "This script needs to temporarily access EFI partitions to check for rEFInd." -ForegroundColor Yellow
+Write-Host "Partitions will be mounted to temporary folders (not drive letters) for inspection." -ForegroundColor Yellow
 Write-Host ""
 
 do {
-    Write-Host "Do you want to proceed with these mount/unmount operations? [Y/N]" -NoNewline
+    Write-Host "Do you want to proceed with partition inspection? [Y/N]" -NoNewline
     $scanConsent = Read-Host " "
     $scanConsent = $scanConsent.Trim()
 } until ($scanConsent -match '^[YyNn]$')
 
 if ($scanConsent -match '^[Nn]$') {
-    Write-Host "Operation cancelled by user. No partitions were modified." -ForegroundColor Cyan
+    Write-Host "Operation cancelled by user. No partitions were accessed." -ForegroundColor Cyan
     return
 }
 
@@ -28,6 +26,17 @@ Write-Host ""
 Write-Host "Starting scan..." -ForegroundColor Green
 
 $foundPartitions = @()
+$tempBasePath = Join-Path $env:TEMP "rEFInd_Scan"
+
+# Create base temp directory if it doesn't exist
+if (-not (Test-Path $tempBasePath)) {
+    try {
+        New-Item -Path $tempBasePath -ItemType Directory -Force | Out-Null
+    } catch {
+        Write-Host "Failed to create temporary directory: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+}
 
 # Enumerate all disks and partitions
 foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.IsSystem -ne $true }) {
@@ -45,35 +54,40 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
             $currentLetter = $part.DriveLetter
         }
 
-        # Temporarily mount to a free letter to inspect (only if not already mounted)
-        $tempLetter = $null
+        # Use mount point instead of drive letter for temporary access
+        $tempMountPoint = $null
         $needsUnmount = $false
+        $accessPath = $null
 
         if ($currentLetter) {
             # Already mounted, use existing letter
-            $tempLetter = $currentLetter
+            $accessPath = "${currentLetter}:"
         } else {
-            # Find free letter for temporary mount
-            for ($c = 90; $c -ge 68; $c--) { # Z..D
-                $candidate = [char]$c
-                if (-not (Get-Volume -DriveLetter $candidate -ErrorAction SilentlyContinue)) {
-                    $tempLetter = $candidate
-                    break
-                }
-            }
-            if (-not $tempLetter) { continue }
-
+            # Create temporary mount point folder
+            $tempMountPoint = Join-Path $tempBasePath "Disk$($disk.Number)_Part$($part.PartitionNumber)"
+            
             try {
-                Add-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath "${tempLetter}:" -ErrorAction Stop
+                # Create mount point directory
+                if (-not (Test-Path $tempMountPoint)) {
+                    New-Item -Path $tempMountPoint -ItemType Directory -Force | Out-Null
+                }
+                
+                # Mount partition to the folder
+                Add-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath $tempMountPoint -ErrorAction Stop
                 $needsUnmount = $true
+                $accessPath = $tempMountPoint
             } catch {
+                # Clean up folder if mount failed
+                if (Test-Path $tempMountPoint) {
+                    Remove-Item $tempMountPoint -Force -ErrorAction SilentlyContinue
+                }
                 continue
             }
         }
 
         try {
-            $refindPath1 = "${tempLetter}:\EFI\refind"
-            $refindPath2 = "${tempLetter}:\EFI\BOOT\refind"
+            $refindPath1 = Join-Path $accessPath "EFI\refind"
+            $refindPath2 = Join-Path $accessPath "EFI\BOOT\refind"
 
             $hasRefind1 = Test-Path $refindPath1 -PathType Container -ErrorAction SilentlyContinue
             $hasRefind2 = Test-Path $refindPath2 -PathType Container -ErrorAction SilentlyContinue
@@ -92,11 +106,20 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
         } finally {
             if ($needsUnmount) {
                 try {
-                    Remove-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath "${tempLetter}:" -ErrorAction SilentlyContinue
+                    Remove-PartitionAccessPath -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber -AccessPath $tempMountPoint -ErrorAction SilentlyContinue
+                    # Clean up the mount point folder
+                    if (Test-Path $tempMountPoint) {
+                        Remove-Item $tempMountPoint -Force -ErrorAction SilentlyContinue
+                    }
                 } catch {}
             }
         }
     }
+}
+
+# Clean up base temp directory
+if (Test-Path $tempBasePath) {
+    Remove-Item $tempBasePath -Force -Recurse -ErrorAction SilentlyContinue
 }
 
 if (-not $foundPartitions) {
