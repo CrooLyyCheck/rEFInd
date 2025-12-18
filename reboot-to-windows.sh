@@ -127,10 +127,15 @@ function main() {
     print_info "=== Reboot to Windows Script ==="
     echo ""
 
-    # Check if running as root
+    # Check if running as root, if not, re-execute with sudo
     if [[ $EUID -ne 0 ]]; then
-        print_error "This script must be run as root (use sudo)"
-        exit 1
+        print_warning "This script requires root privileges."
+        print_info "Please enter your password to continue..."
+        echo ""
+        
+        # Re-execute script with sudo, passing all arguments
+        exec sudo "$0" "$@"
+        exit $?
     fi
 
     # Find EFI partition mount point
