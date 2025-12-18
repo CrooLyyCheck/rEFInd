@@ -3,8 +3,6 @@
 # Script to change rEFInd default_selection to "Microsoft" (Windows)
 # Based on reboot-to-linux-aio.ps1 but simplified for single purpose
 
-set -e
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -13,7 +11,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 function print_error() {
-    echo -e "${RED}$1${NC}"
+    echo -e "${RED}$1${NC}" >&2
 }
 
 function print_success() {
@@ -56,21 +54,40 @@ function set_default_selection_windows() {
 
     print_info "Found: $refind_conf"
 
-    # Create backup
-    cp "$refind_conf" "${refind_conf}.bak" || {
-        print_error "Failed to create backup"
+    # Check if file is readable
+    if [[ ! -r "$refind_conf" ]]; then
+        print_error "Cannot read $refind_conf - permission denied"
         return 1
-    }
+    fi
 
-    # Read file into array
-    mapfile -t content < "$refind_conf"
+    # Create backup
+    if ! cp "$refind_conf" "${refind_conf}.bak" 2>/dev/null; then
+        print_error "Failed to create backup - check write permissions"
+        return 1
+    fi
+    print_info "Backup created: ${refind_conf}.bak"
+
+    # Read file content
+    local content
+    if ! content=$(cat "$refind_conf" 2>&1); then
+        print_error "Failed to read file: $content"
+        rm -f "${refind_conf}.bak"
+        return 1
+    fi
+
+    # Convert content to array, line by line
+    local -a lines
+    while IFS= read -r line; do
+        lines+=("$line")
+    done <<< "$content"
 
     # Find active (uncommented) default_selection line
     local active_line_index=-1
     local i=0
-    for line in "${content[@]}"; do
+    for line in "${lines[@]}"; do
         if [[ "$line" =~ ^[[:space:]]*default_selection[[:space:]]+ ]]; then
             active_line_index=$i
+            print_info "Found active default_selection at line $((i + 1)): $line"
             break
         fi
         ((i++))
@@ -78,8 +95,7 @@ function set_default_selection_windows() {
 
     if [[ $active_line_index -ge 0 ]]; then
         # Active default_selection exists - replace it
-        print_info "Found active default_selection at line $((active_line_index + 1)): ${content[$active_line_index]}"
-        content[$active_line_index]="$target_value"
+        lines[$active_line_index]="$target_value"
         print_success "Replaced with: $target_value"
     else
         # No active default_selection - add it after the first commented one or at the end
@@ -87,9 +103,10 @@ function set_default_selection_windows() {
         
         local insert_index=-1
         i=0
-        for line in "${content[@]}"; do
+        for line in "${lines[@]}"; do
             if [[ "$line" =~ ^[[:space:]]*#[[:space:]]*default_selection[[:space:]]+ ]]; then
                 insert_index=$((i + 1))
+                print_info "Found commented default_selection at line $((i + 1))"
                 break
             fi
             ((i++))
@@ -97,26 +114,29 @@ function set_default_selection_windows() {
         
         if [[ $insert_index -ge 0 ]]; then
             # Insert after first commented default_selection
-            local new_content=()
-            new_content+=("${content[@]:0:$insert_index}")
-            new_content+=("$target_value")
-            new_content+=("${content[@]:$insert_index}")
-            content=("${new_content[@]}")
-            print_info "Inserted '$target_value' after commented default_selection at line $insert_index"
+            local -a new_lines
+            new_lines=("${lines[@]:0:$insert_index}")
+            new_lines+=("$target_value")
+            new_lines+=("${lines[@]:$insert_index}")
+            lines=("${new_lines[@]}")
+            print_info "Inserted '$target_value' after commented default_selection"
         else
             # No commented default_selection found - add at the end
-            content+=("$target_value")
+            lines+=("$target_value")
             print_info "Added '$target_value' at the end of the file"
         fi
     fi
 
     # Write back to file
-    printf '%s\n' "${content[@]}" > "$refind_conf" || {
-        print_error "Failed to write to $refind_conf"
+    if ! printf '%s\n' "${lines[@]}" > "$refind_conf" 2>/dev/null; then
+        print_error "Failed to write to $refind_conf - check write permissions"
         # Restore backup
-        mv "${refind_conf}.bak" "$refind_conf"
+        if [[ -f "${refind_conf}.bak" ]]; then
+            mv "${refind_conf}.bak" "$refind_conf"
+            print_warning "Restored from backup"
+        fi
         return 1
-    }
+    fi
 
     print_success "Successfully updated: $refind_conf"
     print_info "Backup saved as: ${refind_conf}.bak"
@@ -186,9 +206,7 @@ function main() {
     fi
 
     # Set default selection to Windows
-    set_default_selection_windows "$refind_conf"
-    
-    if [[ $? -eq 0 ]]; then
+    if set_default_selection_windows "$refind_conf"; then
         echo ""
         print_success "Configuration updated successfully!"
         print_info "Windows will be the default boot option on next reboot."
@@ -202,6 +220,7 @@ function main() {
             print_info "Reboot cancelled. Changes will take effect on next reboot."
         fi
     else
+        print_error "Failed to update configuration"
         exit 1
     fi
 }
