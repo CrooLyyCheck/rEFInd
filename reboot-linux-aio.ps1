@@ -291,8 +291,6 @@ function Set-DefaultSelectionLinux {
             Select-Object -ExpandProperty FullName
     }
 
-    Write-Host "To unmount: Remove-PartitionAccessPath -DiskNumber $($disk.Number) -PartitionNumber $($esp.PartitionNumber) -AccessPath ${Letter}:"
-
     # --- Set default_selection to vmlinuz in refind.conf ---
 
     if (-not $refind) {
@@ -360,7 +358,8 @@ function Set-DefaultSelectionLinux {
 }
 
 # Main loop
-while ($true) {
+$exitRequested = $false
+while (-not $exitRequested) {
     Show-MainMenu
     $choice = Read-Host "Select option"
 
@@ -373,10 +372,10 @@ while ($true) {
             Set-DefaultSelectionLinux -Letter $PreferredLetter -OpenRefind:$false
         }
         'Q' {
-            break
+            $exitRequested = $true
         }
         'q' {
-            break
+            $exitRequested = $true
         }
         default {
             Write-Host "Invalid choice. Please select 1, 2 or Q." -ForegroundColor Red
