@@ -9,6 +9,7 @@ Write-Host "Scanning disks for EFI partitions containing rEFInd..." -ForegroundC
 Write-Host ""
 Write-Host "This script needs to temporarily access EFI partitions to check for rEFInd." -ForegroundColor Yellow
 Write-Host "Partitions will be mounted to temporary folders (not drive letters) for inspection." -ForegroundColor Yellow
+Write-Host "Only partitions with official EFI System Partition GUID will be checked." -ForegroundColor Yellow
 Write-Host ""
 
 do {
@@ -39,14 +40,22 @@ if (-not (Test-Path $tempBasePath)) {
 }
 
 # Enumerate all disks and partitions
-foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.IsSystem -ne $true }) {
+# Exclude system disk to be extra safe
+foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.IsSystem -ne $true -and $_.IsBoot -ne $true }) {
     $partitions = Get-Partition -DiskNumber $disk.Number -ErrorAction SilentlyContinue
     if (-not $partitions) { continue }
 
     foreach ($part in $partitions) {
-        # Heuristic: EFI/system-like partition
-        $isEsp = ($part.GptType -eq $espGuid) -or ($part.IsSystem -eq $true) -or ($part.Type -match 'System') -or ($part.Size -lt 2GB)
-        if (-not $isEsp) { continue }
+        # STRICT: Only check partitions with official EFI System Partition GUID
+        # This is the ONLY reliable way to identify true EFI partitions
+        if ($part.GptType -ne $espGuid) { 
+            continue 
+        }
+
+        # Additional safety: Skip if this is a boot partition (Windows system ESP)
+        if ($part.IsBoot -eq $true) {
+            continue
+        }
 
         # Check if partition is already mounted
         $currentLetter = $null
@@ -86,6 +95,13 @@ foreach ($disk in Get-Disk | Where-Object { $_.PartitionStyle -eq 'GPT' -and $_.
         }
 
         try {
+            # Verify this looks like an EFI partition by checking for EFI folder
+            $efiFolder = Join-Path $accessPath "EFI"
+            if (-not (Test-Path $efiFolder -PathType Container -ErrorAction SilentlyContinue)) {
+                # Not an EFI partition (no EFI folder), skip it
+                continue
+            }
+
             $refindPath1 = Join-Path $accessPath "EFI\refind"
             $refindPath2 = Join-Path $accessPath "EFI\BOOT\refind"
 
