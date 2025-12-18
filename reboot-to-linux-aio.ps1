@@ -7,9 +7,10 @@ $espGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
 
 function Show-MainMenu {
     Write-Host ""
-    Write-Host "==== reboot to linux AIO ====" -ForegroundColor Cyan
+    Write-Host "==== reboot to linux AIO ==== " -ForegroundColor Cyan
     Write-Host "1 - Detect and Mount rEFInd" -ForegroundColor Yellow
     Write-Host "2 - Set linux on next reboot" -ForegroundColor Yellow
+    Write-Host "3 - Reboot computer now" -ForegroundColor Yellow
     Write-Host "Q - Quit" -ForegroundColor Yellow
     Write-Host ""
 }
@@ -357,6 +358,11 @@ function Set-DefaultSelectionLinux {
     }
 }
 
+function Restart-ComputerNow {
+    Write-Host "Rebooting computer now..." -ForegroundColor Yellow
+    Restart-Computer -Force
+}
+
 # Main loop
 $exitRequested = $false
 while (-not $exitRequested) {
@@ -371,6 +377,9 @@ while (-not $exitRequested) {
             # Option 2 assumes EFI is already mounted to PreferredLetter
             Set-DefaultSelectionLinux -Letter $PreferredLetter -OpenRefind:$false
         }
+        '3' {
+            Restart-ComputerNow
+        }
         'Q' {
             $exitRequested = $true
         }
@@ -378,7 +387,7 @@ while (-not $exitRequested) {
             $exitRequested = $true
         }
         default {
-            Write-Host "Invalid choice. Please select 1, 2 or Q." -ForegroundColor Red
+            Write-Host "Invalid choice. Please select 1, 2, 3 or Q." -ForegroundColor Red
         }
     }
 }
